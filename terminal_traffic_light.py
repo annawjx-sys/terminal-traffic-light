@@ -359,12 +359,14 @@ def get_terminal_state():
             # green 状态超过 10 秒未更新视为 tab 已关闭（残留文件）
             if hook_state == "green" and now - mtime > 10:
                 continue
-            # red 状态超过 5 秒：检查进程是否还活着
-            # 进程还在 → 保持红灯（claude/codex 在等待输入）
-            # 进程已消失 → 过期忽略
-            if hook_state == "red" and now - mtime > 5:
+            # red 状态超过 10 秒且进程还活着 → 降级为黄灯
+            # 回复后 claude 通常 10s 内开始调工具（PreToolUse 会重新写 yellow）
+            # 超过 10s 说明 claude 在纯思考/对话，不需要用户继续等待
+            if hook_state == "red" and now - mtime > 10:
                 pid, _ = _get_tty_foreground_pid(name)
-                if not pid:
+                if pid:
+                    hook_state = "yellow"
+                else:
                     continue
 
             if hook_state in ("red", "yellow", "green"):
