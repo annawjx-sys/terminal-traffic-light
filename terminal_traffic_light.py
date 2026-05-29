@@ -274,7 +274,7 @@ def _is_process_active(pid):
     raw = _run(["ps", "-o", "%cpu=", "-p", str(pid)], timeout=2)
     try:
         cpu = float(raw.strip())
-        return cpu > 5.0
+        return cpu > 20.0
     except (ValueError, IndexError):
         return False
 
@@ -359,13 +359,14 @@ def get_terminal_state():
             # green 状态超过 10 秒未更新视为 tab 已关闭（残留文件）
             if hook_state == "green" and now - mtime > 10:
                 continue
-
-            # red 状态：用 CPU 区分"等待输入"和"处理中"
-            # 处理中（CPU > 0）→ 降级为 yellow
-            if hook_state == "red":
+            # red 状态：写入后 5 秒内保持红灯（确认回复已发出）
+            # 超过 5 秒且进程还活着 → 降级为黄灯（任务已在长时间运行中）
+            if hook_state == "red" and now - mtime > 5:
                 pid, _ = _get_tty_foreground_pid(name)
-                if pid and _is_process_active(pid):
+                if pid:
                     hook_state = "yellow"
+                else:
+                    continue
 
             if hook_state in ("red", "yellow", "green"):
                 if _priority(hook_state) > _priority(worst_state):
