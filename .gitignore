@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+*.app/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 生成的图标和预览
+icons/
+cat_preview.png
