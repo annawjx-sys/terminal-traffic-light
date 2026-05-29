@@ -26,13 +26,13 @@ Configure hooks in `~/.claude/settings.json`:
   "Stop": [
     {
       "matcher": "",
-      "hooks": [{ "type": "command", "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [ -n \"$TTY\" ] && echo \"red:claude\" > \"$HOME/.terminal_traffic_light/$TTY\"" }]
+      "hooks": [{ "type": "command", "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [[ \"$TTY\" == tty* ]] && echo \"red:claude\" > \"$HOME/.terminal_traffic_light/$TTY\"" }]
     }
   ],
   "PreToolUse": [
     {
       "matcher": "",
-      "hooks": [{ "type": "command", "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [ -n \"$TTY\" ] && echo \"yellow:claude\" > \"$HOME/.terminal_traffic_light/$TTY\"" }]
+      "hooks": [{ "type": "command", "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [[ \"$TTY\" == tty* ]] && echo \"yellow:claude\" > \"$HOME/.terminal_traffic_light/$TTY\"" }]
     }
   ]
 }
@@ -55,10 +55,10 @@ Create `~/.codex/hooks.json`:
 {
   "hooks": {
     "PreToolUse": [
-      { "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [ -n \"$TTY\" ] && echo \"yellow:codex\" > \"$HOME/.terminal_traffic_light/$TTY\"" }
+      { "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [[ \"$TTY\" == tty* ]] && echo \"yellow:codex\" > \"$HOME/.terminal_traffic_light/$TTY\"" }
     ],
     "PostToolUse": [
-      { "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [ -n \"$TTY\" ] && echo \"red:codex\" > \"$HOME/.terminal_traffic_light/$TTY\"" }
+      { "command": "TTY=$(tty 2>/dev/null); TTY=${TTY#/dev/}; [[ \"$TTY\" == tty* ]] && echo \"red:codex\" > \"$HOME/.terminal_traffic_light/$TTY\"" }
     ]
   }
 }
