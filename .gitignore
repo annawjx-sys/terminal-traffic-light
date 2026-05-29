@@ -7,6 +7,5 @@ __pycache__/
 *.pyc
 *.pyo
 
-# 生成的图标和预览
+# 生成的图标
 icons/
-cat_preview.png
