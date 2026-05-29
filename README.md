@@ -61,6 +61,17 @@ open TerminalTrafficLight.app
 
 To auto-start on login, add `TerminalTrafficLight.app` to **System Settings → General → Login Items**.
 
+**5. Keep the menu bar always visible**
+
+By default, macOS hides the menu bar in full-screen or when using certain display settings. To keep it always visible:
+
+- **macOS Ventura / Sonoma / Sequoia**: System Settings → Control Center → Menu Bar → set "Automatically hide and show the menu bar" to **Never**
+- Or run this command once in Terminal:
+
+```bash
+defaults write -g _HIHideMenuBar -bool false && killall SystemUIServer
+```
+
 ## Files
 
 | File | Description |

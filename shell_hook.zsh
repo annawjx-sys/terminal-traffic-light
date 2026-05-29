@@ -36,7 +36,7 @@ function _ttl_preexec() {
         mysql|psql|sqlite3|redis-cli|mongosh|\
         crontab|visudo|\
         mail|mutt|neomutt|\
-        claude|chatgpt|aider)
+        claude|chatgpt|aider|codex)
             state="red"
             ;;
         # 可能是 REPL 也可能执行脚本：无参数 = 红灯，有参数 = 黄灯
