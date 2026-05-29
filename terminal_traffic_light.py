@@ -359,13 +359,12 @@ def get_terminal_state():
             # green 状态超过 10 秒未更新视为 tab 已关闭（残留文件）
             if hook_state == "green" and now - mtime > 10:
                 continue
-            # red 状态：写入后 5 秒内保持红灯（确认回复已发出）
-            # 超过 5 秒且进程还活着 → 降级为黄灯（任务已在长时间运行中）
+            # red 状态超过 5 秒：检查进程是否还活着
+            # 进程还在 → 保持红灯（claude/codex 在等待输入）
+            # 进程已消失 → 过期忽略
             if hook_state == "red" and now - mtime > 5:
                 pid, _ = _get_tty_foreground_pid(name)
-                if pid:
-                    hook_state = "yellow"
-                else:
+                if not pid:
                     continue
 
             if hook_state in ("red", "yellow", "green"):
