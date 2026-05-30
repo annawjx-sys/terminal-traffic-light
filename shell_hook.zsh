@@ -35,9 +35,14 @@ function _ttl_preexec() {
         man|info|\
         mysql|psql|sqlite3|redis-cli|mongosh|\
         crontab|visudo|\
-        mail|mutt|neomutt|\
-        claude|chatgpt|aider|codex)
+        mail|mutt|neomutt)
             state="red"
+            ;;
+        # claude/codex/chatgpt：启动时绿灯（就绪/空闲），由 hooks 精确控制红/黄/绿
+        claude|chatgpt|aider|codex)
+            state="green"
+            # 记录当前 TTY 供 claude/codex hooks 使用
+            echo "$_TTL_SESSION_ID" > "$_TTL_STATE_DIR/.current_tty"
             ;;
         # 可能是 REPL 也可能执行脚本：无参数 = 红灯，有参数 = 黄灯
         python|python3|python2|ipython|ipython3|\
