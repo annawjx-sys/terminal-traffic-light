@@ -118,6 +118,82 @@ def create_dot_png(filepath, r, g, b, size=22):
         f.write(_chunk(b"IEND", b""))
 
 
+def create_cat_png(filepath, size=64):
+    """生成黑色像素猫咪 PNG 图标（用于 Dock）。
+    颜色说明：
+      0 = 透明
+      1 = 黑色猫身 (30, 30, 30)
+      3 = 眼白 (255, 255, 255)
+      4 = 绿色眼珠 (80, 200, 120)
+      5 = 粉色鼻子 (255, 150, 150)
+      6 = 内耳深色 (80, 60, 70)
+    """
+    CAT_PIXELS = [
+        [0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0],  # 耳尖
+        [0,1,6,1,1,0,0,0,0,0,1,1,6,1,1,0],  # 内耳
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],  # 头顶
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  # 头
+        [1,1,3,3,4,1,1,1,1,1,1,4,3,3,1,1],  # 眼睛
+        [1,1,3,3,3,1,1,1,1,1,1,3,3,3,1,1],  # 眼睛
+        [1,1,1,1,1,1,5,5,5,5,1,1,1,1,1,1],  # 鼻子
+        [1,1,1,1,1,1,1,5,5,1,1,1,1,1,1,1],  # 嘴
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  # 下巴
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],  # 脸
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],  # 脖子
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],  # 身体
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],  # 身体+尾巴
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],  # 身体
+        [0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0],  # 爪子
+        [0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0],  # 爪子
+    ]
+    COLOR_MAP = {
+        0: (0, 0, 0, 0),
+        1: (30, 30, 30, 255),
+        3: (255, 255, 255, 255),
+        4: (80, 200, 120, 255),
+        5: (255, 150, 150, 255),
+        6: (80, 60, 70, 255),
+    }
+
+    rows_count = len(CAT_PIXELS)
+    cols = len(CAT_PIXELS[0])
+    scale = max(1, size // cols)
+    pw = cols * scale
+    ph = rows_count * scale
+
+    pixel_rows = []
+    for row in CAT_PIXELS:
+        line = b"\x00"  # PNG filter
+        for val in row:
+            rgba = COLOR_MAP.get(val, (0, 0, 0, 0))
+            line += bytes(rgba) * scale
+        for _ in range(scale):
+            pixel_rows.append(line)
+
+    raw_data = b"".join(pixel_rows)
+
+    def _chunk(chunk_type, data):
+        c = chunk_type + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+    with open(filepath, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n")
+        f.write(_chunk(b"IHDR", struct.pack(">IIBBBBB", pw, ph, 8, 6, 0, 0, 0)))
+        f.write(_chunk(b"IDAT", zlib.compress(raw_data, 9)))
+        f.write(_chunk(b"IEND", b""))
+
+
+def set_dock_icon(png_path):
+    """将 Dock 图标设置为指定 PNG（需要 AppKit）。"""
+    try:
+        from AppKit import NSApplication, NSImage
+        image = NSImage.alloc().initWithContentsOfFile_(png_path)
+        if image:
+            NSApplication.sharedApplication().setApplicationIconImage_(image)
+    except Exception:
+        pass
+
+
 def ensure_icons(icon_dir):
     """确保所有颜色图标文件存在。"""
     os.makedirs(icon_dir, exist_ok=True)
@@ -127,6 +203,12 @@ def ensure_icons(icon_dir):
         if not os.path.exists(path):
             create_dot_png(path, *color)
         paths[name] = path
+
+    # 猫猫 Dock 图标：每次启动都重新生成，确保始终是正确版本
+    cat_path = os.path.join(icon_dir, "cat.png")
+    create_cat_png(cat_path)
+    paths["cat"] = cat_path
+
     return paths
 
 
@@ -336,7 +418,6 @@ def get_terminal_state():
     worst_tty = None
 
     if os.path.isdir(SHELL_HOOK_DIR):
-        now = time.time()
         for name in os.listdir(SHELL_HOOK_DIR):
             # 只处理属于 Terminal.app 标签页的文件
             if name not in terminal_ttys:
@@ -356,9 +437,8 @@ def get_terminal_state():
                 hook_state = content
                 hook_cmd = ""
 
-            # green 状态超过 10 秒未更新视为 tab 已关闭（残留文件）
-            if hook_state == "green" and now - mtime > 10:
-                continue
+            # green 状态不设超时：窗口存在就一直显示绿灯，关闭窗口后状态文件
+            # 不在 terminal_ttys 里，自然不会被读取，变回灰白
             # red 状态不设超时：需要持续闪烁直到用户回复
             # 用户回复后 PreToolUse 会写 yellow 覆盖，或 precmd 写 green
 
@@ -367,10 +447,6 @@ def get_terminal_state():
                     worst_state = hook_state
                     worst_cmd = hook_cmd
                     worst_tty = name
-
-    # 有 Terminal.app 标签页，但没有有效的钩子文件 → 绿色（空闲）
-    if worst_state == "gray" and terminal_ttys:
-        return "green", "", None
 
     return worst_state, worst_cmd, worst_tty
 
@@ -480,6 +556,8 @@ class TerminalTrafficLight(rumps.App):
 def main():
     icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
     icon_paths = ensure_icons(icon_dir)
+
+    set_dock_icon(icon_paths["cat"])
 
     app = TerminalTrafficLight(icon_paths)
     app.run()
